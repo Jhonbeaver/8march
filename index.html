@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/chota@latest">
+    <link href="https://fonts.googleapis.com/css?family=Comfortaa&display=swap" rel="stylesheet">
+	<title>CP</title>
+</head>
+<body>
+    <style>
+        body {
+            font-family: 'Comfortaa' !important;
+        }
+        .section {
+            margin: 1rem 0;
+        }
+        .section.main {
+            margin: 0 1rem;
+            width: 100%;
+        }
+        .btngrid {
+            margin: 1rem 1rem 0 0 !important;
+        }
+        /* Аккордион  */
+        .all {
+            flex:1;
+        }
+        .accordion {
+            display: flex;
+            flex: 1;
+        }
+        input {
+            position: absolute;
+            opacity: 0;
+            z-index: -1;
+        }
+        .tabs {
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 4px -2px rgba(0, 0, 0, 0.5);
+        }
+        .tab {
+            width: 100%;
+            color: white;
+            overflow: hidden;
+        }
+        .tab-label {
+            display: flex;
+            justify-content: space-between;
+            padding: 1em;
+            background: #3f4144;
+            font-weight: bold;
+            cursor: pointer;
+            /* Icon */
+        }
+        .tab-label:hover {
+            background: #1a252f;
+        }
+        .tab-label::after {
+            content: "\276F";
+            width: 1em;
+            height: 1em;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .tab-content {
+            max-height: 0;
+            padding: 0 0;
+            color: #3f4144;
+            background: white;
+            transition: all 0.2s;
+        }
+        .tab-close {
+            display: flex;
+            justify-content: flex-end;
+            padding: 1em;
+            font-size: 0.75em;
+            background: #3f4144;
+            cursor: pointer;
+        }
+        .tab-close:hover {
+            background: #1a252f;
+        }
+        input:checked + .tab-label {
+            background: #1a252f;
+        }
+        input:checked + .tab-label::after {
+            transform: rotate(90deg);
+        }
+        input:checked ~ .tab-content {
+            max-height: 100vh;
+            padding: 0;
+        }
+        /* /Аккордион  */
+
+        /* Лист */
+
+        .mat_list{
+            list-style-type: none;
+            display:block;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+        .mat_list>li:nth-child(even) {
+            background-color: #f5f5f5;
+        }
+        .mat_list>li{
+            width:100%;
+            max-height: 100%;
+            transition: max-height 0.5s;
+            overflow: hidden;
+            cursor: pointer;
+            padding: 2rem 0;
+        }
+        .mat_list>li>span {
+            padding: 0 2rem;
+        }
+        /* .mat_list>li::after{
+            content: "";
+            width: 30%;
+            display:block;
+            margin:0 0 0 0;
+            border-top:1px solid rgba(0,0,0,0.3);
+        } */
+        .mat_list>li.hide{
+            max-height:0px;
+        }
+        /* /Лист */
+    </style>
+
+
+
+	<div id="app" class="container"><!-- Основной div для работы vuejs -->
+        <div class="main section row is-center"> <!-- Основной блок -->
+            
+            <div class="section col-12 row" > 
+                <p class="col-3-lg col-12">State: {{state}}</p> 
+                <p class="col-3-lg col-12">Image: {{image}}</p>
+            </div>
+
+            <div class="section col-12 is-center">  <!-- Блок с кнопками управления-->
+                <button class="button" id='pause'>Пауза</button>
+                <button class="button error" id='final'>Финал</button>
+            </div> <!-- /Блок с кнопками управления-->
+            <div class="is-center is-12 row" > <!-- Блок с кнопками разделов-->
+                <button @click="SetState(btn.id)" class="button primary btngrid"  v-for="(btn, i) in buttons" :key="i" :id='btn.id'>{{btn.name}}</button>
+            </div><!-- !Блок с кнопками разделов-->
+
+        </div><!-- /Основной блок -->
+            <div class="tabs section row is-center"> <!-- Цикл табов -->
+                <div class="tab is-full-width" v-for="(tab, i) in tabs" :key="i" >
+                    <input type="checkbox" :id="'chck' + i">
+                    <label class="tab-label" :for="'chck' + i">{{tab.title}}</label>
+                    <div class="tab-content">
+                        <ul class="mat_list">
+                            <li @click="Setimage(l.id)" v-for="(l, j) in tab.list"><span>{{getText(l.id, l.text)}}</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div><!-- .Цикл табов -->
+    </div><!-- /Основной div для работы vuejs -->
+
+    <!-- Подключаем vue.js -->
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script> 
+    <!-- Подключаем socket.io -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+
+
+	<script>
+        
+        var app = new Vue({
+            el: '#app', // id элемента, с которым работает vue
+            /**
+            * Состояния переменных объекта vue
+            **/
+            data: {
+                socket: null,
+                buttons: [
+                    {id: 'hello', name: 'ПРИВЕТ'},
+                    {id: 'songs', name: 'ПЕСНИ'},
+                    {id: 'items', name: 'ПРЕДМЕТЫ'},
+                    {id: 'phrases', name: 'ФРАЗЫ'},
+                    {id:'litra' , name: 'ЛИТЕРАТУРА'},
+                    {id: 'stih', name: 'СТИХИ'},
+                    {id: 'question', name: 'ВОПРОСЫ'}
+                ],
+                tabs: [
+                    {   
+                        title: 'Песни' , 
+                        list:[
+                            {id: '00', text: '00'},
+                            {id: '01'},
+                            {id: '02'},
+                            {id: '03'},
+                            {id: '04', text: '00'}
+                        ]
+                    },
+                    {
+                        title: 'Предметы' ,
+                        list:[
+
+                        ]
+                    },
+                    {
+                        title: 'Фразы' ,
+                        list:[
+
+                        ]
+                    },
+                    {
+                        title: 'Литература' ,
+                        list:[
+
+                        ]
+                    },
+                    {
+                        title: 'Стихи' ,
+                        list:[
+
+                        ]
+                    },
+                ],
+                state: null,
+                image: null
+
+            },
+            /**
+            *
+            * Метод вызывается при загрузке компонента
+            *
+            **/
+            mounted() {
+                this.socket = io(); // Подключаем socket.io
+                // Ловим ивенты
+                this.socket.on('stateis', function(msg){
+                    this.state = msg
+                });
+
+                this.socket.on('imageis', function(msg){
+                    this.image  = msg 
+                });
+            },
+            methods: {
+                /**
+                *
+                * Метод отправки state при нажатии кнопки
+                * @param {string} id
+                *
+                **/
+                SetState(id) {
+                    this.socket.emit('setstate', id);
+                },
+                /**
+                *
+                * Метод отправки image при нажатии в списке
+                * @param {string} id
+                *
+                **/
+                Setimage (id) {
+                    console.log(id)
+                    this.socket.emit('setimage', id);
+                },
+                getText(id, text) {
+                    return text ? text : id
+                }
+
+            }
+        })
+		
+	</script>
+
+</body>
+</html>
