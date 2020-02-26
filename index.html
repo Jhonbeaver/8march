@@ -141,8 +141,8 @@
             </div>
 
             <div class="section col-12 is-center">  <!-- Блок с кнопками управления-->
-                <button class="button" id='pause'>Пауза</button>
-                <button class="button error" id='final'>Финал</button>
+                <button class="button" id='pause' @click="SetState('pause')">Пауза</button>
+                <button class="button error" id='final' @click="SetState('final')">Финал</button>
             </div> <!-- /Блок с кнопками управления-->
             <div class="is-center is-12 row" > <!-- Блок с кнопками разделов-->
                 <button @click="SetState(btn.id)" class="button primary btngrid"  v-for="(btn, i) in buttons" :key="i" :id='btn.id'>{{btn.name}}</button>
